@@ -785,11 +785,14 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       return Status.ERROR;
     }
 
+    /*
+
     try {
       Thread.sleep(128);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+    */
 
     boolean needToAbort = false;
     for (String key : keys) {
