@@ -795,6 +795,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
     */
 
     boolean needToAbort = false;
+    if (debug) {
+      System.out.println("Setting up put for keys: " + keys);
+    }
     for (String key : keys) {
       Put p = new Put(Bytes.toBytes(key));
       for (Map.Entry<String, String> entry : values.entrySet())
