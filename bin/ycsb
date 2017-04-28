@@ -69,7 +69,7 @@ DATABASES = {
     "googlebigtable"  : "com.yahoo.ycsb.db.GoogleBigtableClient",
     "googledatastore" : "com.yahoo.ycsb.db.GoogleDatastoreClient",
     "hbase094"     : "com.yahoo.ycsb.db.HBaseClient",
-    "hbase098"     : "com.yahoo.ycsb.db.HBaseClient",
+    "hbase098"     : "com.yahoo.ycsb.db.TxHBaseClient",
     "hbase10"      : "com.yahoo.ycsb.db.HBaseClient10",
     "hypertable"   : "com.yahoo.ycsb.db.HypertableClient",
     "infinispan-cs": "com.yahoo.ycsb.db.InfinispanRemoteClient",

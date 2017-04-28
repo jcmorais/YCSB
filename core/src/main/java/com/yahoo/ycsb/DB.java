@@ -17,10 +17,7 @@
 
 package com.yahoo.ycsb;
 
-import java.util.HashMap;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * A layer for accessing a database to be benchmarked. Each thread in the client
@@ -100,6 +97,7 @@ public abstract class DB {
    */
   public abstract Status scan(String table, String startkey, int recordcount, Set<String> fields,
                               Vector<HashMap<String, ByteIterator>> result);
+  public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String,String> values) {return new Status("","");}
 
   /**
    * Update a record in the database. Any field/value pairs in the specified values HashMap will be written into the
@@ -111,6 +109,14 @@ public abstract class DB {
    * @return The result of the operation.
    */
   public abstract Status update(String table, String key, HashMap<String, ByteIterator> values);
+
+
+
+
+  public Status readMulti(String table, List<String> key, Set<String> fields, HashMap<String,Map<String,String>> result) { return new Status("","");}
+  public Status updateMulti(String table, List<String> key, HashMap<String,String> values) { return new Status("","");}
+  public Status complex(String table, List<String> readKeys, Set<String> fields, HashMap<String,Map<String,String>> readResult,
+                     List<String> writeKeys, HashMap<String,String> writeValues) { return new Status("","");}
 
   /**
    * Insert a record in the database. Any field/value pairs in the specified values HashMap will be written into the

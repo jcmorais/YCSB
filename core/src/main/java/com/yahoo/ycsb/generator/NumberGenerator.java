@@ -28,7 +28,7 @@ public abstract class NumberGenerator extends Generator<Number> {
    * Set the last value generated. NumberGenerator subclasses must use this call
    * to properly set the last value, or the {@link #lastValue()} calls won't work.
    */
-  protected void setLastValue(Number last) {
+  public void setLastValue(Number last) {
     lastVal = last;
   }
 

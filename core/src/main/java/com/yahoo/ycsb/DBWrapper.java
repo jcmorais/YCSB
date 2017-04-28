@@ -162,6 +162,15 @@ public class DBWrapper extends DB {
       return res;
     }
   }
+  public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String,String> values)
+  {
+    long st=System.currentTimeMillis();
+    Status res= db.scanWrite(table,startkey,recordcount,fields,values);
+    long en=System.currentTimeMillis();
+    measurements.measure("SCANWRITE",(int)(en-st));
+    measurements.reportStatus("SCANWRITE",res);
+    return res;
+  }
 
   private void measure(String op, Status result, long intendedStartTimeNanos,
                        long startTimeNanos, long endTimeNanos) {
@@ -201,6 +210,37 @@ public class DBWrapper extends DB {
       return res;
     }
   }
+
+  public Status complex(String table, List<String> readKeys, Set<String> fields, HashMap<String,Map<String,String>> readResult,
+                     List<String> writeKeys, HashMap<String,String> writeValues)
+  {
+    long st=System.currentTimeMillis();
+    Status res=db.complex(table,readKeys,fields,readResult,writeKeys,writeValues);
+    long en=System.currentTimeMillis();
+    measurements.measure("COMPLEX",(int)(en-st));
+    measurements.reportStatus("COMPLEX",res);
+    return res;
+  }
+
+  public Status updateMulti(String table, List<String> keys, HashMap<String,String> values)
+  {
+    long st=System.currentTimeMillis();
+    Status res=db.updateMulti(table,keys,values);
+    long en=System.currentTimeMillis();
+    measurements.measure("MULTIUPDATE",(int)(en-st));
+    measurements.reportStatus("MULTIUPDATE",res);
+    return res;
+  }
+
+  public Status readMulti(String table, List<String> key, Set<String> fields, HashMap<String,Map<String,String>> result) {
+    long st = System.currentTimeMillis();
+    Status res = db.readMulti(table, key, fields, result);
+    long en = System.currentTimeMillis();
+    measurements.measure("MULTIREAD", (int) (en - st));
+    measurements.reportStatus("MULTIREAD", res);
+    return res;
+  }
+
 
   /**
    * Insert a record in the database. Any field/value pairs in the specified
