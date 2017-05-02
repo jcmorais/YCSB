@@ -27,12 +27,14 @@
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 
-
-recordcount=100
+insertstart=0
+insertcount=1000
+recordcount=1000
 operationcount=1000
 
-
 readallfields=false
+
+writeallfields=false
 
 readproportion=0.0
 multiupdateproportion=1.0

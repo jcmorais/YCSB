@@ -1253,15 +1253,18 @@ public class CoreWorkload extends Workload {
       int keynum;
       do
       {
-        keynum=selectedKeychooser.nextValue().intValue();
+        keynum = keychooser.nextValue().intValue();
+        //keynum=selectedKeychooser.nextValue().intValue();
         //System.out.println("KEY: " + keynum + " " + threadState);
       }
       while (keynum>transactioninsertkeysequence.lastValue());
 
+
       if (!orderedinserts)
       {
-        keynum=(int)Utils.hash(keynum);
+        //keynum=Utils.hash(keynum);
       }
+
       //keys.add("user"+keynum);
       keys.add(makeKey(keynum));
     }
