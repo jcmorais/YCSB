@@ -1,5 +1,8 @@
 package com.yahoo.ycsb.db;
 
+import client.TransactionAjitts;
+import client.TransactionManagerAjitts;
+import client.TransactionManagerAjittsImpl;
 import com.yahoo.ycsb.ByteArrayByteIterator;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DBException;
@@ -12,7 +15,6 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.omid.transaction.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -34,7 +36,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
   private String tableName = "";
   private static HConnection hConn = null;
-  private TTable hTable = null;
+  //private TTable hTable = null;
+  private HTableInterface hTable = null;
   private String columnFamily = "";
   private byte[] columnFamilyBytes;
   private boolean clientSideBuffering = false;
@@ -48,20 +51,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
 
 
-  private TransactionManager tm;
+  //private TransactionManager tm;
+  private TransactionManagerAjitts tm;
   static{
     CONFIG= HBaseConfiguration.create();
   }
 
 
   public TxHBaseClient() {
-    try {
-      this.tm = HBaseTransactionManager.newInstance();
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+      this.tm = new TransactionManagerAjittsImpl();
   }
 
   /**
@@ -156,9 +154,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
     synchronized (TABLE_LOCK) {
       if(debug)
         System.out.println("creating TTable "+table);
-      hTable = new TTable(hConn.getTable(table), hConn.getTable(table));
+      hTable = hConn.getTable(table);
       if(debug)
-        System.out.println("table "+hTable.getHTable().getName()+" created");
+        System.out.println("table "+hTable.getName()+" created");
       //hTable = new TTable(CONFIG, table);
       // TODO: 11/04/2017 se der problemas devido às connections, fazer aqui como no benchmark... 
       //2 suggestions from http://ryantwopointoh.blogspot.com/2009/01/performance-of-hbase-importing.html
@@ -180,13 +178,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
    */
   public Status read(String table, String key, Set<String> fields, HashMap<String, ByteIterator> result) {
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+
+    transaction = tm.begin();
 
 
     //if this is a "new" tableName, init HTable object.  Else, use existing one
@@ -216,7 +210,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
           g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
         }
       }
-      r = hTable.get(transaction, g);
+      r = hTable.get(g);
     } catch (IOException e) {
       System.err.println("Error doing get: " + e);
       return Status.ERROR;
@@ -236,15 +230,10 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+
+      if(!tm.commit(transaction))
+        return Status.ERROR;
+
     return Status.OK;
   }
 
@@ -263,13 +252,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
                      Vector<HashMap<String, ByteIterator>> result) {
 
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+
+    transaction = tm.begin();
 
 
     //if this is a "new" tableName, init HTable object.  Else, use existing one
@@ -302,7 +287,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
     }
 
     //get results
-    try (ResultScanner scanner = hTable.getScanner(transaction, s)) {
+    try (ResultScanner scanner = hTable.getScanner(s)) {
       int numResults = 0;
       for (Result rr = scanner.next(); rr != null; rr = scanner.next()) {
         //get row key
@@ -337,15 +322,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       return Status.ERROR;
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
 
     return Status.OK;
   }
@@ -356,13 +335,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
   public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String,String> values) {
 
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
 
 
     //if this is a "new" tableName, init HTable object.  Else, use existing one
@@ -395,7 +369,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
     }
 
     //get results
-    try (ResultScanner scanner = hTable.getScanner(transaction, s)) {
+    try (ResultScanner scanner = hTable.getScanner(s)) {
       int numResults = 0;
       for (Result rr = scanner.next(); rr != null; rr = scanner.next()) {
         //get row key
@@ -413,7 +387,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
           p.add(columnFamilyBytes, Bytes.toBytes(entry.getKey()), Bytes.toBytes(entry.getValue()));
         }
 
-        hTable.put(transaction, p);
+        hTable.put(p);
 
 
         numResults++;
@@ -433,15 +407,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       return Status.ERROR;
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
 
     return Status.OK;
 
@@ -460,13 +427,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
    */
   public Status update(String table, String key, HashMap<String, ByteIterator> values) {
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
+
 
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
@@ -495,7 +458,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
     }
 
     try {
-      hTable.put(transaction, p);
+      hTable.put( p);
     } catch (IOException e) {
       if (debug) {
         System.err.println("Error doing put: " + e);
@@ -506,15 +469,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       return Status.ERROR;
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
 
     return Status.OK;
   }
@@ -558,13 +514,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       }
     }
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
+
 
     boolean needToAbort = false;
     for (String key : keys) {
@@ -584,14 +536,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
             g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
           }
         }
-        r = hTable.get(transaction, g);
+        r = hTable.get( g);
       }
-      catch (TransactionException e)
-      {
-        System.err.println("Error doing get: "+e);
-        e.printStackTrace(System.err);
-        return Status.ERROR;
-      }
+
       catch (IOException e)
       {
         System.err.println("Error doing get: "+e);
@@ -616,15 +563,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       result.put(key, res);
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
 
     return Status.OK;
   }
@@ -649,13 +589,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       }
     }
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
+
 
 
 
@@ -676,15 +612,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
             g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
           }
         }
-        r = hTable.get(transaction, g);
+        r = hTable.get(g);
       }
 
-      catch (TransactionException e)
-      {
-        System.err.println("Error doing get: "+e);
-        e.printStackTrace(System.err);
-        return Status.ERROR;
-      }
       catch (IOException e)
       {
         System.err.println("Error doing get: "+e);
@@ -724,15 +654,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
       try
       {
-        hTable.put(transaction, p);
+        hTable.put(p);
       }
 
-      catch (TransactionException e)
-      {
-        System.err.println("Error doing put: "+e);
-        e.printStackTrace(System.err);
-        return Status.ERROR;
-      }
       catch (IOException e)
       {
         if (debug) {
@@ -746,15 +670,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
         return Status.ERROR;
       }
     }
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
     return Status.OK;
   }
 
@@ -777,13 +694,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       }
     }
 
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
+
 
     /*
 
@@ -811,15 +724,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
       try
       {
-        hTable.put(transaction,p);
+        hTable.put(p);
       }
 
-      catch (TransactionException e)
-      {
-        System.err.println("Error doing put: "+e);
-        e.printStackTrace(System.err);
-        return Status.ERROR;
-      }
       catch (IOException e)
       {
         if (debug) {
@@ -834,16 +741,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       }
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      System.out.println("### Abort transaction ###");
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
-
     return Status.OK;
   }
 
@@ -857,13 +756,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
    * @return Zero on success, a non-zero error code on error
    */
   public Status delete(String table, String key) {
-    Transaction transaction = null;
-    try {
-      transaction = tm.begin();
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
+    TransactionAjitts transaction = null;
+    transaction = tm.begin();
+
 
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
@@ -883,7 +778,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
 
     Delete d = new Delete(Bytes.toBytes(key));
     try {
-      hTable.delete(transaction, d);
+      hTable.delete( d);
     } catch (IOException e) {
       if (debug) {
         System.err.println("Error doing delete: " + e);
@@ -891,15 +786,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB{
       return Status.ERROR;
     }
 
-    try {
-      tm.commit(transaction);
-    } catch (RollbackException e) {
-      e.printStackTrace();
+    if(!tm.commit(transaction))
       return Status.ERROR;
-    } catch (TransactionException e) {
-      e.printStackTrace();
-      return Status.ERROR;
-    }
 
     return Status.OK;
   }

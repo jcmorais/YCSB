@@ -29,6 +29,14 @@ LICENSE file.
   <name>HBase 0.98.x DB Binding</name>
 
   <dependencies>
+
+    <dependency>
+      <groupId>pt.haslab.tm</groupId>
+      <artifactId>tm-ajjits</artifactId>
+      <version>0.1</version>
+    </dependency>
+
+
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-client</artifactId>
