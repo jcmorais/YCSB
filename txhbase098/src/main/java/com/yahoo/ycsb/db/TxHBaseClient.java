@@ -40,7 +40,7 @@ import static com.yahoo.ycsb.workloads.CoreWorkload.TABLENAME_PROPERTY_DEFAULT;
 /**
  * HBase client for YCSB framework.
  */
-public class HBaseClient extends com.yahoo.ycsb.DB {
+public class TxHBaseClient extends com.yahoo.ycsb.DB {
   private static final Configuration CONFIG = HBaseConfiguration.create();
   private static final AtomicInteger THREAD_COUNT = new AtomicInteger(0);
 
@@ -400,7 +400,7 @@ public class HBaseClient extends com.yahoo.ycsb.DB {
   }
 
   public static void main(String[] args) {
-    System.out.println("Run HBaseClient");
+    System.out.println("Run TxHBaseClient");
     if (args.length != 3) {
       System.out.println("Please specify a threadcount, columnfamily and operation count");
       System.exit(0);
@@ -423,7 +423,7 @@ public class HBaseClient extends com.yahoo.ycsb.DB {
           try {
             Random random = new Random();
 
-            HBaseClient cli = new HBaseClient();
+            TxHBaseClient cli = new TxHBaseClient();
 
             Properties props = new Properties();
             props.setProperty("columnfamily", columnfamily);
