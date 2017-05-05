@@ -322,6 +322,47 @@ public class CoreWorkload extends Workload {
 
   private Measurements measurements = Measurements.getMeasurements();
 
+
+
+
+  /**
+   *  Transaction Suport
+   */
+
+  int fieldlength;
+
+  /**
+   * The name of the property for the proportion of transactions that are scans.
+   */
+  public static final String MULTI_UPDATE_PROPORTION_PROPERTY="multiupdateproportion";
+  public static final String COMPLEX_PROPORTION_PROPERTY="complexproportion";
+  public static final String MULTI_READ_PROPORTION_PROPERTY="multireadproportion";
+  public static final String SCAN_WRITE_PROPORTION_PROPERTY="scanwriteproportion";
+
+  /**
+   * The default proportion of transactions that are scans.
+   */
+  public static final String MULTI_UPDATE_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String COMPLEX_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String MULTI_READ_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String SCAN_WRITE_PROPORTION_PROPERTY_DEFAULT="0.0";
+
+
+  public static final String MAX_TRANSACTION_LENGTH_PROPERTY="maxtransactionlength";
+  public static final String MAX_TRANSACTION_LENGTH_PROPERTY_DEFAULT="100";
+  public static final String TRANSACTION_LENGTH_DISTRIBUTION_PROPERTY="transactionlengthdistribution";
+  public static final String TRANSACTION_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT="uniform";
+
+
+  NumberGenerator transactionlength;
+  DiscreteGenerator complexchooser;
+
+
+
+
+
+
+
   protected static NumberGenerator getFieldLengthGenerator(Properties p) throws WorkloadException {
     NumberGenerator fieldlengthgenerator;
     String fieldlengthdistribution = p.getProperty(
@@ -360,6 +401,10 @@ public class CoreWorkload extends Workload {
 
     fieldcount =
         Integer.parseInt(p.getProperty(FIELD_COUNT_PROPERTY, FIELD_COUNT_PROPERTY_DEFAULT));
+
+    //Transaction suport
+    fieldlength=Integer.parseInt(p.getProperty(FIELD_LENGTH_PROPERTY,FIELD_LENGTH_PROPERTY_DEFAULT));
+
     fieldnames = new ArrayList<>();
     for (int i = 0; i < fieldcount; i++) {
       fieldnames.add("field" + i);
@@ -377,6 +422,21 @@ public class CoreWorkload extends Workload {
         Integer.parseInt(p.getProperty(MAX_SCAN_LENGTH_PROPERTY, MAX_SCAN_LENGTH_PROPERTY_DEFAULT));
     String scanlengthdistrib =
         p.getProperty(SCAN_LENGTH_DISTRIBUTION_PROPERTY, SCAN_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT);
+
+
+
+    /**
+     * Transaction Suport
+     */
+    complexchooser = new DiscreteGenerator();
+    complexchooser.addValue(0.5, "READ");
+    complexchooser.addValue(0.5, "WRITE");
+    int maxtransactionlength=Integer.parseInt(p.getProperty(MAX_TRANSACTION_LENGTH_PROPERTY,MAX_TRANSACTION_LENGTH_PROPERTY_DEFAULT));
+    String transactionlengthdistrib=p.getProperty(TRANSACTION_LENGTH_DISTRIBUTION_PROPERTY,TRANSACTION_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT);
+
+    /* End */
+
+
 
     int insertstart =
         Integer.parseInt(p.getProperty(INSERT_START_PROPERTY, INSERT_START_PROPERTY_DEFAULT));
@@ -469,6 +529,20 @@ public class CoreWorkload extends Workload {
           "Distribution \"" + scanlengthdistrib + "\" not allowed for scan length");
     }
 
+    if (transactionlengthdistrib.compareTo("uniform")==0)
+    {
+      transactionlength=new UniformIntegerGenerator(1,maxtransactionlength);
+    }
+    else if (transactionlengthdistrib.compareTo("zipfian")==0)
+    {
+      transactionlength=new ZipfianGenerator(1,maxtransactionlength);
+    }
+    else
+    {
+      throw new WorkloadException("Distribution \""+transactionlengthdistrib+"\" not allowed for transaction length");
+    }
+
+
     insertionRetryLimit = Integer.parseInt(p.getProperty(
         INSERTION_RETRY_LIMIT, INSERTION_RETRY_LIMIT_DEFAULT));
     insertionRetryInterval = Integer.parseInt(p.getProperty(
@@ -501,6 +575,7 @@ public class CoreWorkload extends Workload {
     } else {
       // fill with random data
       data = new RandomByteIterator(fieldlengthgenerator.nextValue().longValue());
+      System.out.println("data:"+data);
     }
     value.put(fieldkey, data);
 
@@ -613,12 +688,176 @@ public class CoreWorkload extends Workload {
     case "SCAN":
       doTransactionScan(db);
       break;
+      case "MULTIUPDATE":
+        doTransactionMultiUpdate(db);
+        break;
+      case "MULTIREAD":
+        doTransactionMultiRead(db);
+        break;
+      case "COMPLEX":
+        doTransactionComplex(db);
+        break;
+      case "SCANWRITE":
+        doTransactionScanWrite(db);
+        break;
     default:
       doTransactionReadModifyWrite(db);
     }
 
     return true;
   }
+
+  private void doTransactionScanWrite(DB db) {
+
+    // choose a random key
+    int keynum = nextKeynum();
+
+    String startkeyname = buildKeyName(keynum);
+
+    HashSet<String> fields = null;
+
+    // choose a random scan length
+    int len = scanlength.nextValue().intValue();
+
+    if (!readallfields) {
+      // read a random field
+      String fieldname = fieldnames.get(fieldchooser.nextValue().intValue());
+
+      fields = new HashSet<String>();
+      fields.add(fieldname);
+    }
+
+
+    HashMap<String, ByteIterator> values;
+    if (writeallfields) {
+      // new data for all the fields
+      values = buildValues(startkeyname);
+    } else {
+      // update a random field
+      values = buildSingleValue(startkeyname);
+    }
+
+    //os values do scanWrite são iguais para todas as rows
+    db.scanWrite(table,startkeyname,len,fields,values);
+
+  }
+
+  private void doTransactionComplex(DB db) {
+    //choose a random scan length
+    int len=transactionlength.nextValue().intValue();
+
+    Set<String> readKeys = new HashSet<String>(len);
+    Set<String> writeKeys = new HashSet<String>(len);
+
+    HashSet<String> fields = new HashSet<>();
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+
+      if (complexchooser.nextString().compareTo("READ") == 0) {
+        //readKeys.add("user"+keynum);
+        readKeys.add(buildKeyName(keynum));
+      } else {
+        //writeKeys.add("user"+keynum);
+        writeKeys.add(buildKeyName(keynum));
+      }
+    }
+
+    if (!readallfields) {
+      // read a random field
+      String fieldname = fieldnames.get(fieldchooser.nextValue().intValue());
+
+      fields = new HashSet<String>();
+      fields.add(fieldname);
+    } else if (dataintegrity) {
+      // pass the full field list if dataintegrity is on for verification
+      fields = new HashSet<String>(fieldnames);
+    }
+
+
+    for (String keyname : writeKeys) {
+      if (writeallfields) {
+        // new data for all the fields
+        values.put(keyname, buildValues(keyname));
+      } else {
+        // update a random field
+        values.put(keyname, buildSingleValue(keyname));
+      }
+    }
+
+    HashMap<String, HashMap<String, ByteIterator>> cells = new HashMap<>();
+    db.complex(table, readKeys, fields, cells, writeKeys, values);
+
+  }
+
+  private void doTransactionMultiRead(DB db) {
+    //choose a random scan length
+    int len=transactionlength.nextValue().intValue();
+
+    HashSet<String> fields = null;
+    Set<String> keys = new HashSet<String>(len);
+
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    if (!readallfields) {
+      // read a random field
+      String fieldname = fieldnames.get(fieldchooser.nextValue().intValue());
+
+      fields = new HashSet<String>();
+      fields.add(fieldname);
+    } else if (dataintegrity) {
+      // pass the full field list if dataintegrity is on for verification
+      fields = new HashSet<String>(fieldnames);
+    }
+
+
+    db.readMulti(table, keys, fields, new HashMap<String, HashMap<String, ByteIterator>>());
+
+    /*
+    if (dataintegrity) {
+      verifyRow(keyname, cells);
+    }*/
+
+
+  }
+
+  private void doTransactionMultiUpdate(DB db) {
+    //choose a random scan length
+    int len = transactionlength.nextValue().intValue();
+    Set<String> keys = new HashSet<>(len);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    for (String keyname : keys) {
+      if (writeallfields) {
+        // new data for all the fields
+        values.put(keyname, buildValues(keyname));
+      } else {
+        // update a random field
+        values.put(keyname, buildSingleValue(keyname));
+      }
+    }
+
+    System.out.println(values);
+
+    db.updateMulti(table, keys, values);
+  }
+
 
   /**
    * Results are reported in the first three buckets of the histogram under
@@ -666,7 +905,7 @@ public class CoreWorkload extends Workload {
 
     String keyname = buildKeyName(keynum);
 
-    HashSet<String> fields = null;
+    HashSet<String> fields = new HashSet<>();
 
     if (!readallfields) {
       // read a random field
@@ -814,6 +1053,12 @@ public class CoreWorkload extends Workload {
     final double readmodifywriteproportion = Double.parseDouble(p.getProperty(
         READMODIFYWRITE_PROPORTION_PROPERTY, READMODIFYWRITE_PROPORTION_PROPERTY_DEFAULT));
 
+    double multiupdateproportion=Double.parseDouble(p.getProperty(MULTI_UPDATE_PROPORTION_PROPERTY,MULTI_UPDATE_PROPORTION_PROPERTY_DEFAULT));
+    double multireadproportion=Double.parseDouble(p.getProperty(MULTI_READ_PROPORTION_PROPERTY,MULTI_READ_PROPORTION_PROPERTY_DEFAULT));
+    double scanwriteproportion=Double.parseDouble(p.getProperty(SCAN_WRITE_PROPORTION_PROPERTY,SCAN_WRITE_PROPORTION_PROPERTY_DEFAULT));
+    double complexproportion=Double.parseDouble(p.getProperty(COMPLEX_PROPORTION_PROPERTY,COMPLEX_PROPORTION_PROPERTY_DEFAULT));
+
+
     final DiscreteGenerator operationchooser = new DiscreteGenerator();
     if (readproportion > 0) {
       operationchooser.addValue(readproportion, "READ");
@@ -834,6 +1079,23 @@ public class CoreWorkload extends Workload {
     if (readmodifywriteproportion > 0) {
       operationchooser.addValue(readmodifywriteproportion, "READMODIFYWRITE");
     }
+
+    if (multiupdateproportion>0) {
+      operationchooser.addValue(multiupdateproportion,"MULTIUPDATE");
+    }
+
+    if (complexproportion>0) {
+      operationchooser.addValue(complexproportion,"COMPLEX");
+    }
+
+    if (multireadproportion>0) {
+      operationchooser.addValue(multireadproportion,"MULTIREAD");
+    }
+
+    if (scanwriteproportion>0) {
+      operationchooser.addValue(scanwriteproportion,"SCANWRITE");
+    }
+
     return operationchooser;
   }
 }

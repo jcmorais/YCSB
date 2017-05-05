@@ -243,4 +243,67 @@ public class DBWrapper extends DB {
       return res;
     }
   }
+
+
+  /**
+   * Transaction Suport
+   */
+
+  @Override
+  public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String, ByteIterator> values) {
+    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.scanWrite(table, startkey, recordcount, fields, values);
+      long en = System.nanoTime();
+      measure("SCANWRITE", res, ist, st, en);
+      measurements.reportStatus("SCANWRITE", res);
+      return res;
+    }
+  }
+
+  @Override
+  public Status readMulti(String table, Set<String> keys, Set<String> fields, HashMap<String, HashMap<String, ByteIterator>> values) {
+    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.readMulti(table, keys, fields, values);
+      long en = System.nanoTime();
+      measure("READMULTI", res, ist, st, en);
+      measurements.reportStatus("READMULTI", res);
+      return res;
+    }
+  }
+
+  @Override
+  public Status updateMulti(String table, Set<String> keys, HashMap<String, HashMap<String, ByteIterator>> values) {
+    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, keys, values);
+      long en = System.nanoTime();
+      measure("UPDATEMULTI", res, ist, st, en);
+      measurements.reportStatus("UPDATEMULTI", res);
+      return res;
+    }
+  }
+
+  @Override
+  public Status complex(String table,
+                        Set<String> readKeys,
+                        Set<String> fields,
+                        HashMap<String, HashMap<String, ByteIterator>> readValues,
+                        Set<String> writeKeys,
+                        HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.complex(table, readKeys, fields, readValues, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("COMPLEX", res, ist, st, en);
+      measurements.reportStatus("COMPLEX", res);
+      return res;
+    }
+  }
 }

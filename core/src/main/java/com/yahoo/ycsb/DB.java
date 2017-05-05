@@ -131,4 +131,26 @@ public abstract class DB {
    * @return The result of the operation.
    */
   public abstract Status delete(String table, String key);
+
+
+  /*
+   *
+   *  Transaction Suport
+   *
+   */
+
+
+  public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String,ByteIterator> values) { return Status.ERROR; }
+
+  public Status readMulti(String table, Set<String> keys, Set<String> fields, HashMap<String,HashMap<String,ByteIterator>> values) { return Status.ERROR; }
+
+  public Status updateMulti(String table, Set<String> keys, HashMap<String, HashMap<String,ByteIterator>> values) { return Status.ERROR; }
+
+  public Status complex(String table, Set<String> readKeys, Set<String> fields, HashMap<String,HashMap<String,ByteIterator>> readValues,
+                        Set<String> writeKeys, HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
+
+
+  //para criar as minhas transações devo declarar aqui um método para cada
+
+
 }

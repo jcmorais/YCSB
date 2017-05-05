@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.omid.transaction.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -48,7 +49,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
 
   private String tableName = "";
   private static HConnection hConn = null;
-  private HTableInterface hTable = null;
+  //private HTableInterface hTable = null;
+  private TTable hTable = null;
   private String columnFamily = "";
   private byte[] columnFamilyBytes;
   private boolean clientSideBuffering = false;
@@ -59,6 +61,23 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
   private boolean usePageFilter = true;
 
   private static final Object TABLE_LOCK = new Object();
+
+
+
+  private TransactionManager tm;
+
+  public TxHBaseClient() {
+    try {
+      this.tm = HBaseTransactionManager.newInstance();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+
+
 
   /**
    * Initialize any state for this DB.
@@ -150,10 +169,10 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
 
   private void getHTable(String table) throws IOException {
     synchronized (TABLE_LOCK) {
-      hTable = hConn.getTable(table);
+      hTable = new TTable(hConn.getTable(table), hConn.getTable(table));
       //2 suggestions from http://ryantwopointoh.blogspot.com/2009/01/performance-of-hbase-importing.html
-      hTable.setAutoFlush(!clientSideBuffering, true);
-      hTable.setWriteBufferSize(writeBufferSize);
+      //hTable.setAutoFlush(!clientSideBuffering, true);
+      //hTable.setWriteBufferSize(writeBufferSize);
       //return hTable;
     }
 
@@ -169,6 +188,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
    * @return Zero on success, a non-zero error code on error
    */
   public Status read(String table, String key, Set<String> fields, HashMap<String, ByteIterator> result) {
+    Transaction transaction = null;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
       hTable = null;
@@ -195,7 +223,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
           g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
         }
       }
-      r = hTable.get(g);
+      r = hTable.get(transaction, g);
     } catch (IOException e) {
       System.err.println("Error doing get: " + e);
       return Status.ERROR;
@@ -214,6 +242,16 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
       }
 
     }
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
     return Status.OK;
   }
 
@@ -230,6 +268,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
    */
   public Status scan(String table, String startkey, int recordcount, Set<String> fields,
                      Vector<HashMap<String, ByteIterator>> result) {
+
+    Transaction transaction = null;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
       hTable = null;
@@ -260,7 +307,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
     }
 
     //get results
-    try (ResultScanner scanner = hTable.getScanner(s)) {
+    try (ResultScanner scanner = hTable.getScanner(transaction, s)) {
       int numResults = 0;
       for (Result rr = scanner.next(); rr != null; rr = scanner.next()) {
         //get row key
@@ -295,6 +342,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
       return Status.ERROR;
     }
 
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
     return Status.OK;
   }
 
@@ -308,6 +364,14 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
    * @return Zero on success, a non-zero error code on error
    */
   public Status update(String table, String key, HashMap<String, ByteIterator> values) {
+    Transaction transaction = null;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
       hTable = null;
@@ -335,7 +399,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
     }
 
     try {
-      hTable.put(p);
+      hTable.put(transaction, p);
     } catch (IOException e) {
       if (debug) {
         System.err.println("Error doing put: " + e);
@@ -343,6 +407,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
       return Status.ERROR;
     } catch (ConcurrentModificationException e) {
       //do nothing for now...hope this is rare
+      return Status.ERROR;
+    }
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
       return Status.ERROR;
     }
 
@@ -370,6 +443,15 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
    * @return Zero on success, a non-zero error code on error
    */
   public Status delete(String table, String key) {
+
+    Transaction transaction = null;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
     //if this is a "new" tableName, init HTable object.  Else, use existing one
     if (!this.tableName.equals(table)) {
       hTable = null;
@@ -388,11 +470,355 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
 
     Delete d = new Delete(Bytes.toBytes(key));
     try {
-      hTable.delete(d);
+      hTable.delete(transaction, d);
     } catch (IOException e) {
       if (debug) {
         System.err.println("Error doing delete: " + e);
       }
+      return Status.ERROR;
+    }
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    return Status.OK;
+  }
+
+  @Override
+  public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String, ByteIterator> values) {
+    Transaction transaction;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+
+
+    //if this is a "new" tableName, init HTable object.  Else, use existing one
+    if (!this.tableName.equals(table)) {
+      hTable = null;
+      try {
+        getHTable(table);
+        this.tableName = table;
+      } catch (IOException e) {
+        System.err.println("Error accessing HBase tableName: " + e);
+        return Status.ERROR;
+      }
+    }
+
+    Scan s = new Scan(Bytes.toBytes(startkey));
+    //HBase has no record limit.  Here, assume recordcount is small enough to bring back in one call.
+    //We get back recordcount records
+    s.setCaching(recordcount);
+    if (this.usePageFilter) {
+      s.setFilter(new PageFilter(recordcount));
+    }
+
+    //add specified fields or else all fields
+    if (fields == null) {
+      s.addFamily(columnFamilyBytes);
+    } else {
+      for (String field : fields) {
+        s.addColumn(columnFamilyBytes, Bytes.toBytes(field));
+      }
+    }
+
+    //get results
+    try (ResultScanner scanner = hTable.getScanner(transaction, s)) {
+      int numResults = 0;
+      for (Result rr = scanner.next(); rr != null; rr = scanner.next()) {
+        //get row key
+        String key = Bytes.toString(rr.getRow());
+        if (debug) {
+          System.out.println("Got scan result for key: " + key);
+        }
+
+        Put p = new Put(rr.getRow());
+        for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
+          byte[] value = entry.getValue().toArray();
+          if (debug) {
+            System.out.println("Adding field/value " + entry.getKey() + "/" +
+                entry.getValue() + " to put request");
+          }
+          p.add(columnFamilyBytes, Bytes.toBytes(entry.getKey()), value );
+        }
+        hTable.put(transaction, p);
+
+        numResults++;
+
+        // PageFilter does not guarantee that the number of results is <= pageSize, so this
+        // break is required.
+        //if hit recordcount, bail out
+        if (numResults >= recordcount) {
+          break;
+        }
+      } //done with row
+
+    } catch (IOException e) {
+      if (debug) {
+        System.out.println("Error in getting/parsing scan result: " + e);
+      }
+      return Status.ERROR;
+    }
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    return Status.OK;
+  }
+
+  @Override
+  public Status readMulti(String table, Set<String> keys, Set<String> fields, HashMap<String, HashMap<String, ByteIterator>> result) {
+
+    Transaction transaction;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+
+    //if this is a "new" tableName, init HTable object.  Else, use existing one
+    if (!this.tableName.equals(table)) {
+      hTable = null;
+      try {
+        getHTable(table);
+        this.tableName = table;
+      } catch (IOException e) {
+        System.err.println("Error accessing HBase tableName: " + e);
+        return Status.ERROR;
+      }
+    }
+
+
+    for (String key : keys) {
+      Result r;
+      try {
+        if (debug) {
+          System.out.println("Doing read from HBase columnfamily " + columnFamily);
+          System.out.println("Doing read for key: " + key);
+        }
+        Get g = new Get(Bytes.toBytes(key));
+        if (fields == null) {
+          g.addFamily(columnFamilyBytes);
+        } else {
+          for (String field : fields) {
+            g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
+          }
+        }
+        r = hTable.get(transaction, g);
+      } catch (IOException e) {
+        System.err.println("Error doing get: " + e);
+        return Status.ERROR;
+      } catch (ConcurrentModificationException e) {
+        //do nothing for now...need to understand HBase concurrency model better
+        return Status.ERROR;
+      }
+
+      HashMap<String, ByteIterator> resAux = new HashMap<>();
+      for (KeyValue kv : r.raw()) {
+
+        resAux.put(Bytes.toString(kv.getQualifier()),
+            new ByteArrayByteIterator(kv.getValue()));
+
+        if (debug) {
+          System.out.println("Result for field: " + Bytes.toString(kv.getQualifier()) +
+              " is: " + Bytes.toString(kv.getValue()));
+        }
+      }
+
+      result.put(key, resAux);
+    }
+
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    return Status.OK;
+  }
+
+  @Override
+  public Status updateMulti(String table, Set<String> keys, HashMap<String, HashMap<String, ByteIterator>> values) {
+
+    Transaction transaction;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    //if this is a "new" tableName, init HTable object.  Else, use existing one
+    if (!this.tableName.equals(table)) {
+      hTable = null;
+      try {
+        getHTable(table);
+        this.tableName = table;
+      } catch (IOException e) {
+        System.err.println("Error accessing HBase tableName: " + e);
+        return Status.ERROR;
+      }
+    }
+
+
+    for (String key : keys) {
+      if (debug) {
+        System.out.println("Setting up put for key: " + key);
+      }
+      Put p = new Put(Bytes.toBytes(key));
+      for (Map.Entry<String, ByteIterator> entry : values.get(key).entrySet()) {
+        byte[] value = entry.getValue().toArray();
+        if (debug) {
+          System.out.println("Adding field/value " + entry.getKey() + "/" +
+              Bytes.toStringBinary(value) + " to put request");
+        }
+        p.add(columnFamilyBytes, Bytes.toBytes(entry.getKey()), value);
+      }
+
+      try {
+        hTable.put(transaction, p);
+      } catch (IOException e) {
+        if (debug) {
+          System.err.println("Error doing put: " + e);
+        }
+        return Status.ERROR;
+      } catch (ConcurrentModificationException e) {
+        //do nothing for now...hope this is rare
+        return Status.ERROR;
+      }
+    }
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    return Status.OK;
+  }
+
+  @Override
+  public Status complex(String table, Set<String> readKeys, Set<String> fields, HashMap<String, HashMap<String, ByteIterator>> readValues, Set<String> writeKeys, HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+    Transaction transaction = null;
+    try {
+      transaction = tm.begin();
+    } catch (TransactionException e) {
+      e.printStackTrace();
+      return Status.ERROR;
+    }
+
+    //if this is a "new" tableName, init HTable object.  Else, use existing one
+    if (!this.tableName.equals(table)) {
+      hTable = null;
+      try {
+        getHTable(table);
+        this.tableName = table;
+      } catch (IOException e) {
+        System.err.println("Error accessing HBase tableName: " + e);
+        return Status.ERROR;
+      }
+    }
+
+
+    for (String key : readKeys) {
+      Result r;
+      try {
+        if (debug) {
+          System.out.println("Doing read from HBase columnfamily " + columnFamily);
+          System.out.println("Doing read for key: " + key);
+        }
+        Get g = new Get(Bytes.toBytes(key));
+        if (fields == null) {
+          g.addFamily(columnFamilyBytes);
+        } else {
+          for (String field : fields) {
+            g.addColumn(columnFamilyBytes, Bytes.toBytes(field));
+          }
+        }
+        r = hTable.get(transaction, g);
+      } catch (IOException e) {
+        System.err.println("Error doing get: " + e);
+        return Status.ERROR;
+      } catch (ConcurrentModificationException e) {
+        //do nothing for now...need to understand HBase concurrency model better
+        return Status.ERROR;
+      }
+
+      HashMap<String, ByteIterator> resAux = new HashMap<>();
+      for (KeyValue kv : r.raw()) {
+
+        resAux.put(Bytes.toString(kv.getQualifier()),
+            new ByteArrayByteIterator(kv.getValue()));
+
+        if (debug) {
+          System.out.println("Result for field: " + Bytes.toString(kv.getQualifier()) +
+              " is: " + Bytes.toString(kv.getValue()));
+        }
+      }
+
+      readValues.put(key, resAux);
+    }
+
+
+    for (String key : writeKeys) {
+      if (debug) {
+        System.out.println("Setting up put for key: " + key);
+      }
+      Put p = new Put(Bytes.toBytes(key));
+      for (Map.Entry<String, ByteIterator> entry : writeValues.get(key).entrySet()) {
+        byte[] value = entry.getValue().toArray();
+        if (debug) {
+          System.out.println("Adding field/value " + entry.getKey() + "/" +
+              Bytes.toStringBinary(value) + " to put request");
+        }
+        p.add(columnFamilyBytes, Bytes.toBytes(entry.getKey()), value);
+      }
+
+      try {
+        hTable.put(transaction, p);
+      } catch (IOException e) {
+        if (debug) {
+          System.err.println("Error doing put: " + e);
+        }
+        return Status.ERROR;
+      } catch (ConcurrentModificationException e) {
+        //do nothing for now...hope this is rare
+        return Status.ERROR;
+      }
+    }
+
+
+
+    try {
+      tm.commit(transaction);
+    } catch (RollbackException e) {
+      return Status.ERROR;
+    } catch (TransactionException e) {
+      e.printStackTrace();
       return Status.ERROR;
     }
 
