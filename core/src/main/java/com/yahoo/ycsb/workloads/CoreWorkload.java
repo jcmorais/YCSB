@@ -23,6 +23,7 @@ import com.yahoo.ycsb.measurements.Measurements;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * The core benchmark scenario. Represents a set of clients doing simple CRUD operations. The
@@ -339,6 +340,13 @@ public class CoreWorkload extends Workload {
   public static final String MULTI_READ_PROPORTION_PROPERTY="multireadproportion";
   public static final String SCAN_WRITE_PROPORTION_PROPERTY="scanwriteproportion";
 
+  public static final String TX_ONE_PROPORTION_PROPERTY="txoneproportion";
+  public static final String TX_TWO_PROPORTION_PROPERTY="txtwoproportion";
+  public static final String TX_THREE_PROPORTION_PROPERTY="txthreeproportion";
+  public static final String TX_FOUR_PROPORTION_PROPERTY="txfourproportion";
+  public static final String TX_FIVE_PROPORTION_PROPERTY="txfiveproportion";
+
+
   /**
    * The default proportion of transactions that are scans.
    */
@@ -346,6 +354,12 @@ public class CoreWorkload extends Workload {
   public static final String COMPLEX_PROPORTION_PROPERTY_DEFAULT="0.0";
   public static final String MULTI_READ_PROPORTION_PROPERTY_DEFAULT="0.0";
   public static final String SCAN_WRITE_PROPORTION_PROPERTY_DEFAULT="0.0";
+
+  public static final String TX_ONE_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String TX_TWO_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String TX_THREE_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String TX_FOUR_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String TX_FIVE_PROPORTION_PROPERTY_DEFAULT="0.0";
 
 
   public static final String MAX_TRANSACTION_LENGTH_PROPERTY="maxtransactionlength";
@@ -601,6 +615,25 @@ public class CoreWorkload extends Workload {
     return values;
   }
 
+
+  /**
+   * Builds values for a list of position fields.
+   */
+  private HashMap<String,ByteIterator> buildSomeValues(List<Integer> fieldPos) {
+    HashMap<String, ByteIterator> values = new HashMap<>();
+
+    for (Integer pos : fieldPos) {
+      String fieldkey = fieldnames.get(pos);
+      ByteIterator data = new RandomByteIterator(fieldlengthgenerator.nextValue().longValue());
+      values.put(fieldkey, data);
+    }
+
+    return values;
+  }
+
+
+
+
   /**
    * Build a deterministic value given the key information.
    */
@@ -676,18 +709,18 @@ public class CoreWorkload extends Workload {
     }
 
     switch (operation) {
-    case "READ":
-      doTransactionRead(db);
-      break;
-    case "UPDATE":
-      doTransactionUpdate(db);
-      break;
-    case "INSERT":
-      doTransactionInsert(db);
-      break;
-    case "SCAN":
-      doTransactionScan(db);
-      break;
+      case "READ":
+        doTransactionRead(db);
+        break;
+      case "UPDATE":
+        doTransactionUpdate(db);
+        break;
+      case "INSERT":
+        doTransactionInsert(db);
+        break;
+      case "SCAN":
+        doTransactionScan(db);
+        break;
       case "MULTIUPDATE":
         doTransactionMultiUpdate(db);
         break;
@@ -700,12 +733,29 @@ public class CoreWorkload extends Workload {
       case "SCANWRITE":
         doTransactionScanWrite(db);
         break;
+      case "TX_ONE":
+        doTransactionTxOne(db);
+        break;
+      case "TX_TWO":
+        doTransactionTxTwo(db);
+        break;
+      case "TX_THREE":
+        doTransactionTxThree(db);
+        break;
+      case "TX_FOUR":
+        doTransactionTxFour(db);
+        break;
+      case "TX_FIVE":
+        doTransactionTxFive(db);
+        break;
     default:
       doTransactionReadModifyWrite(db);
     }
 
     return true;
   }
+
+
 
   private void doTransactionScanWrite(DB db) {
 
@@ -1028,6 +1078,134 @@ public class CoreWorkload extends Workload {
     }
   }
 
+
+
+
+  public void doTransactionTxOne(DB db){
+    int len = 10;
+    Set<String> keys = new HashSet<>(len);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    for (String keyname : keys) {
+      List<Integer> fieldPos = Arrays.asList(2,3,7);
+      values.put(keyname, buildSomeValues(fieldPos));
+    }
+
+    db.txOne(table, keys, values);
+
+  }
+
+
+  private void doTransactionTxTwo(DB db) {
+    int len = transactionlength.nextValue().intValue();
+    Set<String> keys = new HashSet<>(len);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    for (String keyname : keys) {
+      List<Integer> fieldPos = Arrays.asList(5);
+      values.put(keyname, buildSomeValues(fieldPos));
+    }
+
+    db.txTwo(table, keys, values);
+
+  }
+
+
+  private void doTransactionTxThree(DB db) {
+    Set<String> keys = new HashSet<>(1);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+
+    // choose a random key
+    int keynum = nextKeynum();
+    String keyname = buildKeyName(keynum);
+    keys.add(keyname);
+
+    values.put(keyname, buildValues(keyname));
+
+    db.txThree(table, keys, values);
+  }
+
+  private void doTransactionTxFour(DB db) {
+    int len = 10;
+    Set<String> keys = new HashSet<>(len);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+    int randValue = ThreadLocalRandom.current().nextInt(0, 3);
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    for (String keyname : keys) {
+      if (randValue==0) {
+        List<Integer> fieldPos = Arrays.asList(3, 5);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+      else if(randValue==1){
+        List<Integer> fieldPos = Arrays.asList(5, 7);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+      else{
+        List<Integer> fieldPos = Arrays.asList(3, 5, 7);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+    }
+
+    db.txFour(table, keys, values);
+  }
+
+  private void doTransactionTxFive(DB db) {
+    int len = transactionlength.nextValue().intValue();
+    Set<String> keys = new HashSet<>(len);
+    HashMap<String, HashMap<String, ByteIterator>> values = new HashMap<>();
+    int randValue = ThreadLocalRandom.current().nextInt(0, 4);
+
+    for (int i = 0; i < len; i++) {
+      // choose a random key
+      int keynum = nextKeynum();
+      String keyname = buildKeyName(keynum);
+      keys.add(keyname);
+    }
+
+    for (String keyname : keys) {
+      if (randValue==0) {
+        List<Integer> fieldPos = Arrays.asList(3);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+      else if(randValue==1){
+        List<Integer> fieldPos = Arrays.asList(4);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+      else if (randValue==2){
+        List<Integer> fieldPos = Arrays.asList(8);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+      else{
+        List<Integer> fieldPos = Arrays.asList(3,4,8);
+        values.put(keyname, buildSomeValues(fieldPos));
+      }
+    }
+
+    db.txFive(table, keys, values);
+  }
+
+
   /**
    * Creates a weighted discrete values with database operations for a workload to perform.
    * Weights/proportions are read from the properties list and defaults are used
@@ -1057,6 +1235,13 @@ public class CoreWorkload extends Workload {
     double multireadproportion=Double.parseDouble(p.getProperty(MULTI_READ_PROPORTION_PROPERTY,MULTI_READ_PROPORTION_PROPERTY_DEFAULT));
     double scanwriteproportion=Double.parseDouble(p.getProperty(SCAN_WRITE_PROPORTION_PROPERTY,SCAN_WRITE_PROPORTION_PROPERTY_DEFAULT));
     double complexproportion=Double.parseDouble(p.getProperty(COMPLEX_PROPORTION_PROPERTY,COMPLEX_PROPORTION_PROPERTY_DEFAULT));
+
+    double txOneProportion=Double.parseDouble(p.getProperty(TX_ONE_PROPORTION_PROPERTY,TX_ONE_PROPORTION_PROPERTY_DEFAULT));
+    double txTwoProportion=Double.parseDouble(p.getProperty(TX_TWO_PROPORTION_PROPERTY,TX_TWO_PROPORTION_PROPERTY_DEFAULT));
+    double txThreeProportion=Double.parseDouble(p.getProperty(TX_THREE_PROPORTION_PROPERTY,TX_THREE_PROPORTION_PROPERTY_DEFAULT));
+    double txFourProportion=Double.parseDouble(p.getProperty(TX_FOUR_PROPORTION_PROPERTY,TX_FOUR_PROPORTION_PROPERTY_DEFAULT));
+    double txFiveProportion=Double.parseDouble(p.getProperty(TX_FIVE_PROPORTION_PROPERTY,TX_FIVE_PROPORTION_PROPERTY_DEFAULT));
+
 
 
     final DiscreteGenerator operationchooser = new DiscreteGenerator();
@@ -1094,6 +1279,26 @@ public class CoreWorkload extends Workload {
 
     if (scanwriteproportion>0) {
       operationchooser.addValue(scanwriteproportion,"SCANWRITE");
+    }
+
+    if (txOneProportion>0) {
+      operationchooser.addValue(txOneProportion,"TX_ONE");
+    }
+
+    if (txTwoProportion>0) {
+      operationchooser.addValue(txTwoProportion,"TX_TWO");
+    }
+
+    if (txThreeProportion>0) {
+      operationchooser.addValue(txThreeProportion,"TX_THREE");
+    }
+
+    if (txFourProportion>0) {
+      operationchooser.addValue(txFourProportion,"TX_FOUR");
+    }
+
+    if (txFiveProportion>0) {
+      operationchooser.addValue(txFiveProportion,"TX_FIVE");
     }
 
     return operationchooser;

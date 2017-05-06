@@ -149,8 +149,27 @@ public abstract class DB {
   public Status complex(String table, Set<String> readKeys, Set<String> fields, HashMap<String,HashMap<String,ByteIterator>> readValues,
                         Set<String> writeKeys, HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
 
-
   //para criar as minhas transações devo declarar aqui um método para cada
+
+  public Status txOne(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
+
+  public Status txTwo(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
+
+  public Status txThree(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
+
+  public Status txFour(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
+
+  public Status txFive(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
 
 
 }

@@ -825,6 +825,29 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
     return Status.OK;
   }
 
+
+
+
+
+  /*
+
+  public Status txOne(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String,ByteIterator>> writeValues){
+
+
+
+
+
+    return Status.OK;
+  }
+
+  */
+
+
+
+
+
   public static void main(String[] args) {
     System.out.println("Run TxHBaseClient");
     if (args.length != 3) {
@@ -905,4 +928,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
     System.out.println("Throughput: " + ((1000.0) * (((double) (opcount * threadcount)) / ((double) (en - st))))
         + " ops/sec");
   }
+
+
+
 }

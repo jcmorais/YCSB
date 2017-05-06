@@ -48,6 +48,19 @@ public class DBWrapper extends DB {
   private final String scopeStringScan;
   private final String scopeStringUpdate;
 
+  private final String scopeStringUpdateMulti;
+  private final String scopeStringScanWrite;
+  private final String scopeStringReadMulti;
+  private final String scopeStringComplex;
+
+  private final String scopeStringTxOne;
+  private final String scopeStringTxTwo;
+  private final String scopeStringTxThree;
+  private final String scopeStringTxFour;
+  private final String scopeStringTxFive;
+
+
+
   public DBWrapper(final DB db, final Tracer tracer) {
     this.db = db;
     measurements = Measurements.getMeasurements();
@@ -60,6 +73,18 @@ public class DBWrapper extends DB {
     scopeStringRead = simple + "#read";
     scopeStringScan = simple + "#scan";
     scopeStringUpdate = simple + "#update";
+
+    scopeStringUpdateMulti = simple + "#multiupdate";
+    scopeStringScanWrite = simple + "#scanwrite";
+    scopeStringReadMulti = simple + "#multiread";
+    scopeStringComplex = simple + "#complex";
+
+    scopeStringTxOne = simple + "#tx_one";
+    scopeStringTxTwo = simple + "#tx_two";
+    scopeStringTxThree = simple + "#tx_three";
+    scopeStringTxFour = simple + "#tx_four";
+    scopeStringTxFive = simple + "#tx_five";
+
   }
 
   /**
@@ -120,8 +145,8 @@ public class DBWrapper extends DB {
    * Read a record from the database. Each field/value pair from the result
    * will be stored in a HashMap.
    *
-   * @param table The name of the table
-   * @param key The record key of the record to read.
+   * @param table  The name of the table
+   * @param key    The record key of the record to read.
    * @param fields The list of fields to read, or null for all of them
    * @param result A HashMap of field/value pairs for the result
    * @return The result of the operation.
@@ -143,11 +168,11 @@ public class DBWrapper extends DB {
    * Perform a range scan for a set of records in the database.
    * Each field/value pair from the result will be stored in a HashMap.
    *
-   * @param table The name of the table
-   * @param startkey The record key of the first record to read.
+   * @param table       The name of the table
+   * @param startkey    The record key of the first record to read.
    * @param recordcount The number of records to read
-   * @param fields The list of fields to read, or null for all of them
-   * @param result A Vector of HashMaps, where each HashMap is a set field/value pairs for one record
+   * @param fields      The list of fields to read, or null for all of them
+   * @param result      A Vector of HashMaps, where each HashMap is a set field/value pairs for one record
    * @return The result of the operation.
    */
   public Status scan(String table, String startkey, int recordcount,
@@ -184,8 +209,8 @@ public class DBWrapper extends DB {
    * Update a record in the database. Any field/value pairs in the specified values HashMap will be written into the
    * record with the specified record key, overwriting any existing values with the same field name.
    *
-   * @param table The name of the table
-   * @param key The record key of the record to write.
+   * @param table  The name of the table
+   * @param key    The record key of the record to write.
    * @param values A HashMap of field/value pairs to update in the record
    * @return The result of the operation.
    */
@@ -207,8 +232,8 @@ public class DBWrapper extends DB {
    * values HashMap will be written into the record with the specified
    * record key.
    *
-   * @param table The name of the table
-   * @param key The record key of the record to insert.
+   * @param table  The name of the table
+   * @param key    The record key of the record to insert.
    * @param values A HashMap of field/value pairs to insert in the record
    * @return The result of the operation.
    */
@@ -229,7 +254,7 @@ public class DBWrapper extends DB {
    * Delete a record from the database.
    *
    * @param table The name of the table
-   * @param key The record key of the record to delete.
+   * @param key   The record key of the record to delete.
    * @return The result of the operation.
    */
   public Status delete(String table, String key) {
@@ -251,7 +276,7 @@ public class DBWrapper extends DB {
 
   @Override
   public Status scanWrite(String table, String startkey, int recordcount, Set<String> fields, HashMap<String, ByteIterator> values) {
-    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+    try (final TraceScope span = tracer.newScope(scopeStringScanWrite)) {
       long ist = measurements.getIntendedtartTimeNs();
       long st = System.nanoTime();
       Status res = db.scanWrite(table, startkey, recordcount, fields, values);
@@ -264,7 +289,7 @@ public class DBWrapper extends DB {
 
   @Override
   public Status readMulti(String table, Set<String> keys, Set<String> fields, HashMap<String, HashMap<String, ByteIterator>> values) {
-    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+    try (final TraceScope span = tracer.newScope(scopeStringReadMulti)) {
       long ist = measurements.getIntendedtartTimeNs();
       long st = System.nanoTime();
       Status res = db.readMulti(table, keys, fields, values);
@@ -277,7 +302,7 @@ public class DBWrapper extends DB {
 
   @Override
   public Status updateMulti(String table, Set<String> keys, HashMap<String, HashMap<String, ByteIterator>> values) {
-    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+    try (final TraceScope span = tracer.newScope(scopeStringUpdateMulti)) {
       long ist = measurements.getIntendedtartTimeNs();
       long st = System.nanoTime();
       Status res = db.updateMulti(table, keys, values);
@@ -296,7 +321,7 @@ public class DBWrapper extends DB {
                         Set<String> writeKeys,
                         HashMap<String, HashMap<String, ByteIterator>> writeValues) {
 
-    try (final TraceScope span = tracer.newScope(scopeStringDelete)) {
+    try (final TraceScope span = tracer.newScope(scopeStringComplex)) {
       long ist = measurements.getIntendedtartTimeNs();
       long st = System.nanoTime();
       Status res = db.complex(table, readKeys, fields, readValues, writeKeys, writeValues);
@@ -306,4 +331,83 @@ public class DBWrapper extends DB {
       return res;
     }
   }
+
+
+  public Status txOne(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxOne)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("TX_ONE", res, ist, st, en);
+      measurements.reportStatus("TX_ONE", res);
+      return res;
+    }
+  }
+
+  public Status txTwo(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxTwo)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("TX_TWO", res, ist, st, en);
+      measurements.reportStatus("TX_TWO", res);
+      return res;
+    }
+  }
+
+  public Status txThree(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxThree)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("TX_THREE", res, ist, st, en);
+      measurements.reportStatus("TX_THREE", res);
+      return res;
+    }
+  }
+
+  public Status txFour(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxFour)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("TX_FOUR", res, ist, st, en);
+      measurements.reportStatus("TX_FOUR", res);
+      return res;
+    }
+  }
+
+  public Status txFive(String table,
+                      Set<String> writeKeys,
+                      HashMap<String, HashMap<String, ByteIterator>> writeValues) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxFive)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.updateMulti(table, writeKeys, writeValues);
+      long en = System.nanoTime();
+      measure("TX_FIVE", res, ist, st, en);
+      measurements.reportStatus("TX_FIVE", res);
+      return res;
+    }
+
+  }
 }
+
+
