@@ -583,15 +583,16 @@ public class CoreWorkload extends Workload {
     HashMap<String, ByteIterator> value = new HashMap<>();
 
     String fieldkey = fieldnames.get(fieldchooser.nextValue().intValue());
-    ByteIterator data;
+    ByteIterator data = null;
     if (dataintegrity) {
       data = new StringByteIterator(buildDeterministicValue(key, fieldkey));
     } else {
       // fill with random data
       data = new RandomByteIterator(fieldlengthgenerator.nextValue().longValue());
-      System.out.println("data:"+data);
+
     }
     value.put(fieldkey, data);
+
 
     return value;
   }
@@ -899,12 +900,10 @@ public class CoreWorkload extends Workload {
         values.put(keyname, buildValues(keyname));
       } else {
         // update a random field
-        values.put(keyname, buildSingleValue(keyname));
+        HashMap<String, ByteIterator> d = buildSingleValue(keyname);
+        values.put(keyname, d);
       }
     }
-
-    System.out.println(values);
-
     db.updateMulti(table, keys, values);
   }
 
