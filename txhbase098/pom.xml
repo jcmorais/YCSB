@@ -29,6 +29,14 @@ LICENSE file.
   <name>HBase 0.98.x DB Transaction Binding</name>
 
   <dependencies>
+
+    <dependency>
+      <groupId>pt.haslab.ajitts</groupId>
+      <artifactId>tm-interface</artifactId>
+      <version>0.1</version>
+    </dependency>
+
+
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-client</artifactId>
@@ -39,12 +47,6 @@ LICENSE file.
       <artifactId>core</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.omid</groupId>
-      <artifactId>omid-hbase-client</artifactId>
-      <version>RELEASE</version>
     </dependency>
 
   </dependencies>
