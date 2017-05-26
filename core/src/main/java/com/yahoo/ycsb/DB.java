@@ -171,5 +171,9 @@ public abstract class DB {
                       Set<String> writeKeys,
                       HashMap<String, HashMap<String,ByteIterator>> writeValues) { return Status.ERROR; }
 
+  public Status txSix(String table, Set<String> keys, Set<String> fields, HashMap<String,HashMap<String,ByteIterator>> values) { return Status.ERROR; }
+
+
+
 
 }

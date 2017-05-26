@@ -26,6 +26,8 @@
 
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
+transaction=ajitts
+
 insertorder=order
 
 insertstart=0
@@ -48,5 +50,5 @@ requestdistribution=uniform
 
 maxscanlength=10
 scanlengthdistribution=uniform
-maxtransactionlength=2
+maxtransactionlength=10
 

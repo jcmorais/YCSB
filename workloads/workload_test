@@ -23,11 +23,12 @@ scanproportion=0.0
 insertproportion=0
 
 
-txoneproportion=0.2
-txtwoproportion=0.2
-txthreeproportion=0.2
-txfourproportion=0.2
-txfiveproportion=0.2
+txoneproportion=0.15
+txtwoproportion=0.15
+txthreeproportion=0.15
+txfourproportion=0.15
+txfiveproportion=0.15
+txsixproportion=0.25
 
 requestdistribution=hotspot
 

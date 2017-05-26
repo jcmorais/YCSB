@@ -58,6 +58,7 @@ public class DBWrapper extends DB {
   private final String scopeStringTxThree;
   private final String scopeStringTxFour;
   private final String scopeStringTxFive;
+  private final String scopeStringTxSix;
 
 
 
@@ -84,6 +85,7 @@ public class DBWrapper extends DB {
     scopeStringTxThree = simple + "#tx_three";
     scopeStringTxFour = simple + "#tx_four";
     scopeStringTxFive = simple + "#tx_five";
+    scopeStringTxSix = simple + "#tx_six";
 
   }
 
@@ -418,6 +420,27 @@ public class DBWrapper extends DB {
     }
 
   }
+
+  public Status txSix (String table,
+                       Set<String> keys,
+                       Set<String> fields,
+                       HashMap<String, HashMap<String, ByteIterator>> values) {
+
+    try (final TraceScope span = tracer.newScope(scopeStringTxSix)) {
+      long ist = measurements.getIntendedtartTimeNs();
+      long st = System.nanoTime();
+      Status res = db.readMulti(table, keys, fields, values);
+      long en = System.nanoTime();
+      measure("TX_SIX", res, ist, st, en);
+      measure("TX", res, ist, st, en);
+      measurements.reportStatus("TX_SIX", res);
+      measurements.reportStatus("TX", res);
+      return res;
+    }
+
+  }
+
+
 }
 
 
