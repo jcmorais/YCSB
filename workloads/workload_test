@@ -9,9 +9,9 @@ workload=com.yahoo.ycsb.workloads.CoreWorkload
 insertorder=order
 
 insertstart=0
-insertcount=1000
-recordcount=1000
-operationcount=1000
+insertcount=4000
+recordcount=4000
+operationcount=40000
 
 
 readallfields=false
@@ -30,7 +30,7 @@ txfourproportion=0.15
 txfiveproportion=0.15
 txsixproportion=0.25
 
-requestdistribution=hotspot
+requestdistribution=uniform
 
 maxscanlength=10
 scanlengthdistribution=uniform

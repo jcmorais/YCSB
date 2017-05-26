@@ -1252,9 +1252,6 @@ public class CoreWorkload extends Workload {
       }
     }
 
-    System.out.println("keys "+keys);
-    System.out.println("fields "+fields);
-
 
     db.txSix(table, keys, fields, new HashMap<String, HashMap<String, ByteIterator>>());
 
