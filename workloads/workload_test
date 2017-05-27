@@ -3,7 +3,6 @@
 
 transaction=ajitts
 
-
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 insertorder=order
@@ -28,10 +27,11 @@ txtwoproportion=0.15
 txthreeproportion=0.15
 txfourproportion=0.15
 txfiveproportion=0.15
-txsixproportion=0.25
+txsixproportion=0.15
+txsevenproportion=0.10
 
 requestdistribution=uniform
 
-maxscanlength=10
+maxscanlength=100
 scanlengthdistribution=uniform
 maxtransactionlength=20

@@ -346,6 +346,7 @@ public class CoreWorkload extends Workload {
   public static final String TX_FOUR_PROPORTION_PROPERTY="txfourproportion";
   public static final String TX_FIVE_PROPORTION_PROPERTY="txfiveproportion";
   public static final String TX_SIX_PROPORTION_PROPERTY="txsixproportion";
+  public static final String TX_SEVEN_PROPORTION_PROPERTY="txsevenproportion";
 
 
   /**
@@ -362,6 +363,7 @@ public class CoreWorkload extends Workload {
   public static final String TX_FOUR_PROPORTION_PROPERTY_DEFAULT="0.0";
   public static final String TX_FIVE_PROPORTION_PROPERTY_DEFAULT="0.0";
   public static final String TX_SIX_PROPORTION_PROPERTY_DEFAULT="0.0";
+  public static final String TX_SEVEN_PROPORTION_PROPERTY_DEFAULT="0.0";
 
 
   public static final String MAX_TRANSACTION_LENGTH_PROPERTY="maxtransactionlength";
@@ -754,13 +756,15 @@ public class CoreWorkload extends Workload {
       case "TX_SIX":
         doTransactionTxSix(db);
         break;
+      case "TX_SEVEN":
+        doTransactionTxSeven(db);
+        break;
     default:
       doTransactionReadModifyWrite(db);
     }
 
     return true;
   }
-
 
 
   private void doTransactionScanWrite(DB db) {
@@ -1258,6 +1262,43 @@ public class CoreWorkload extends Workload {
   }
 
 
+
+  private void doTransactionTxSeven(DB db) {
+    // choose a random key
+    int keynum = nextKeynum();
+
+    String startkeyname = buildKeyName(keynum);
+
+    // choose a random scan length
+    int len = scanlength.nextValue().intValue();
+
+    HashSet<String> fields = null;
+
+    int randValue = ThreadLocalRandom.current().nextInt(0, 3);
+
+
+    for (int i = 0; i < len; i++) {
+      if (randValue == 0) {
+        fields = new HashSet<String>();
+        fields.add(fieldnames.get(1));
+        fields.add(fieldnames.get(2));
+      }
+      if (randValue == 1) {
+        fields = new HashSet<String>();
+        fields.add(fieldnames.get(0));
+        fields.add(fieldnames.get(1));
+        fields.add(fieldnames.get(3));
+        fields.add(fieldnames.get(6));
+        fields.add(fieldnames.get(7));
+
+      }
+      //else read all fields
+    }
+
+    db.txSeven(table, startkeyname, len, fields, new Vector<HashMap<String, ByteIterator>>());
+  }
+
+
   /**
    * Creates a weighted discrete values with database operations for a workload to perform.
    * Weights/proportions are read from the properties list and defaults are used
@@ -1294,6 +1335,7 @@ public class CoreWorkload extends Workload {
     double txFourProportion=Double.parseDouble(p.getProperty(TX_FOUR_PROPORTION_PROPERTY,TX_FOUR_PROPORTION_PROPERTY_DEFAULT));
     double txFiveProportion=Double.parseDouble(p.getProperty(TX_FIVE_PROPORTION_PROPERTY,TX_FIVE_PROPORTION_PROPERTY_DEFAULT));
     double txSixProportion=Double.parseDouble(p.getProperty(TX_SIX_PROPORTION_PROPERTY,TX_SIX_PROPORTION_PROPERTY_DEFAULT));
+    double txSevenProportion=Double.parseDouble(p.getProperty(TX_SEVEN_PROPORTION_PROPERTY,TX_SEVEN_PROPORTION_PROPERTY_DEFAULT));
 
 
 
@@ -1354,8 +1396,12 @@ public class CoreWorkload extends Workload {
       operationchooser.addValue(txFiveProportion,"TX_FIVE");
     }
 
-    if (txFiveProportion>0) {
+    if (txSixProportion>0) {
       operationchooser.addValue(txSixProportion,"TX_SIX");
+    }
+
+    if (txSevenProportion>0) {
+      operationchooser.addValue(txSevenProportion,"TX_SEVEN");
     }
 
     return operationchooser;
