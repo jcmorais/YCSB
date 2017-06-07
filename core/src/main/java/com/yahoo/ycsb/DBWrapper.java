@@ -346,9 +346,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.updateMulti(table, writeKeys, writeValues);
       long en = System.nanoTime();
-      measure("TX_ONE", res, ist, st, en);
+      //measure("TX_ONE", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_ONE", res);
+      //measurements.reportStatus("TX_ONE", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -363,9 +363,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.updateMulti(table, writeKeys, writeValues);
       long en = System.nanoTime();
-      measure("TX_TWO", res, ist, st, en);
+      //measure("TX_TWO", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_TWO", res);
+      //measurements.reportStatus("TX_TWO", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -380,9 +380,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.updateMulti(table, writeKeys, writeValues);
       long en = System.nanoTime();
-      measure("TX_THREE", res, ist, st, en);
+      //measure("TX_THREE", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_THREE", res);
+      //measurements.reportStatus("TX_THREE", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -397,9 +397,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.updateMulti(table, writeKeys, writeValues);
       long en = System.nanoTime();
-      measure("TX_FOUR", res, ist, st, en);
+      //measure("TX_FOUR", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_FOUR", res);
+      //measurements.reportStatus("TX_FOUR", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -414,9 +414,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.updateMulti(table, writeKeys, writeValues);
       long en = System.nanoTime();
-      measure("TX_FIVE", res, ist, st, en);
+      //measure("TX_FIVE", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_FIVE", res);
+      //measurements.reportStatus("TX_FIVE", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -433,9 +433,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.readMulti(table, keys, fields, values);
       long en = System.nanoTime();
-      measure("TX_SIX", res, ist, st, en);
+      //measure("TX_SIX", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_SIX", res);
+      //measurements.reportStatus("TX_SIX", res);
       measurements.reportStatus("TX", res);
       return res;
     }
@@ -452,9 +452,9 @@ public class DBWrapper extends DB {
       long st = System.nanoTime();
       Status res = db.scan(table, startkey, recordcount, fields, result);
       long en = System.nanoTime();
-      measure("TX_SEVEN", res, ist, st, en);
+      //measure("TX_SEVEN", res, ist, st, en);
       measure("TX", res, ist, st, en);
-      measurements.reportStatus("TX_SEVEN", res);
+      //measurements.reportStatus("TX_SEVEN", res);
       measurements.reportStatus("TX", res);
       return res;
     }
