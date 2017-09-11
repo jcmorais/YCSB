@@ -31,3 +31,5 @@ requestdistribution=uniform
 maxscanlength=100
 scanlengthdistribution=uniform
 maxtransactionlength=20
+
+worktime=1000

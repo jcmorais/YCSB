@@ -41,6 +41,7 @@ import transaction.TransactionService;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.yahoo.ycsb.workloads.CoreWorkload.TABLENAME_PROPERTY;
@@ -72,6 +73,17 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
 
 
 
+  /**
+   *
+   * Transaction work simulation
+   *
+   */
+
+  public static final String TX_WORK_TIME_PROPERTY="worktime";
+  public static final String TX_WORK_TIME_PROPERTY_DEFAULT="0";
+  protected int worktime;
+
+
   private TransactionManagerService tm;
 
   /*
@@ -94,6 +106,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
    * Called once per DB instance; there is one DB instance per client thread.
    */
   public void init() throws DBException {
+
+    worktime = Integer.parseInt(getProperties().getProperty(TX_WORK_TIME_PROPERTY, TX_WORK_TIME_PROPERTY_DEFAULT));
+    System.out.println("Worktime = "+worktime+"ms");
 
     if ((getProperties().getProperty("transaction") != null) &&
         (getProperties().getProperty("transaction").compareTo("omid") == 0)) {
@@ -380,6 +395,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
       }
       return Status.ERROR;
     }
+
+    //worktime
+    doWorkTime();
 
     try {
       tm.commit(transaction);
@@ -688,6 +706,8 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
       result.put(key, resAux);
     }
 
+    //worktime
+    doWorkTime();
 
     try {
       tm.commit(transaction);
@@ -753,6 +773,9 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
         return Status.ERROR;
       }
     }
+
+    //worktime
+    doWorkTime();
 
     try {
       tm.commit(transaction);
@@ -874,25 +897,19 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
   }
 
 
-
-
-
-  /*
-
-  public Status txOne(String table,
-                      Set<String> writeKeys,
-                      HashMap<String, HashMap<String,ByteIterator>> writeValues){
-
-
-
-
-
-    return Status.OK;
+  public void doWorkTime(){
+    try {
+      if(worktime!=0) {
+        double variance_min = 0.8;
+        double variance_max = 1.2;
+        int x = (int) (worktime*variance_min);
+        int y = (int) (worktime*variance_max);
+        Thread.sleep(ThreadLocalRandom.current().nextInt(x, y));
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
-
-  */
-
-
 
 
 
