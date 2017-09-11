@@ -42,6 +42,7 @@ import transaction.TransactionService;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.yahoo.ycsb.workloads.CoreWorkload.TABLENAME_PROPERTY;
@@ -904,7 +905,7 @@ public class TxHBaseClient extends com.yahoo.ycsb.DB {
         double variance_max = 1.2;
         int x = (int) (worktime*variance_min);
         int y = (int) (worktime*variance_max);
-        Thread.sleep(ThreadLocalRandom.current().nextInt(x, y));
+        TimeUnit.MICROSECONDS.sleep(ThreadLocalRandom.current().nextInt(x, y));
       }
     } catch (InterruptedException e) {
       e.printStackTrace();
